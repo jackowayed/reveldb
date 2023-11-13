@@ -1,3 +1,5 @@
+use crc::{Crc, CRC_32_ISCSI};
+
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 enum RecordType {
@@ -17,8 +19,13 @@ struct Record {
 
 impl Record {
     fn new(data: &[u8], record_type: RecordType) -> Self {
-        Record {checksum: 1, // TODO
-            length: data.len() as u16,
+        let length = data.len() as u16;
+        let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+        let mut digest = crc.digest();
+        digest.update(&length.to_le_bytes());
+        digest.update(data);
+        Record {checksum: digest.finalize(),
+            length,
             record_type,
             data: Box::from(data)}
     }
