@@ -8,14 +8,14 @@ use crc::{Crc, CRC_32_ISCSI};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
-enum RecordType {
+pub enum RecordType {
     FULL = 1,
     FIRST = 2,
     MIDDLE = 3,
     LAST = 4,
 }
 #[derive(Debug)]
-struct Record {
+pub struct Record {
     checksum: u32,           // crc32c of type and data[] ; little-endian
     length: u16,             // little-endian
     record_type: RecordType, // One of FULL, FIRST, MIDDLE, LAST
@@ -23,7 +23,7 @@ struct Record {
 }
 
 impl Record {
-    fn new(data: &[u8], record_type: RecordType) -> Self {
+    pub fn new(data: &[u8], record_type: RecordType) -> Self {
         let length = data.len() as u16;
         let crc = Crc::<u32>::new(&CRC_32_ISCSI);
         let mut digest = crc.digest();
@@ -43,7 +43,7 @@ impl Record {
         ret
     }
 
-    fn encode_to_file(&self, f: &mut dyn Write) {
+    pub fn encode_to_file(&self, f: &mut dyn Write) {
         f.write(&self.checksum.to_le_bytes());
         f.write(&self.length.to_le_bytes());
         f.write(&[self.record_type as u8]);
@@ -51,18 +51,30 @@ impl Record {
     }
 }
 
-struct RevelDB {
+pub struct RevelDB {
     directory: String,
     log_file: File,
 }
 
 impl RevelDB {
-    fn new(directory: String) -> Self {
-        let log_path = Path::new(&directory).join("000001.log"); // TODO number is variable
+    pub fn new(directory: String) -> Self {
+        let path = Path::new(&directory);
+        fs::create_dir_all(path).unwrap();
+        let log_path = path.join("000001.log"); // TODO number is variable
         Self {
             directory,
             log_file: File::create(log_path).unwrap(),
         }
+    }
+}
+
+impl Write for RevelDB {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.log_file.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.log_file.flush()
     }
 }
 
