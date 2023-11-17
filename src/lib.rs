@@ -43,7 +43,7 @@ impl Record {
         ret
     }
 
-    pub fn encode_to_file(&self, f: &mut dyn Write) {
+    pub fn encode_to_file(&self, f: &mut impl Write) {
         f.write(&self.checksum.to_le_bytes());
         f.write(&self.length.to_le_bytes());
         f.write(&[self.record_type as u8]);
