@@ -5,6 +5,7 @@ use std::{
 };
 
 use crc::{Crc, CRC_32_ISCSI};
+use integer_encoding::VarInt;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -51,35 +52,25 @@ impl Record {
     }
 }
 
-pub struct RevelDB {
-    directory: String,
-    log_file: File,
+fn put(key: &[u8], value: &[u8], f: &mut impl Write) {
+    // TODO imlement varint for thi to work with sizes > 127
+    f.write(&[key.len() as u8]);
+    f.write(key);
+    f.write(&[value.len() as u8]);
+    f.write(value);
 }
 
-impl RevelDB {
-    pub fn new(directory: String) -> Self {
-        let path = Path::new(&directory);
-        fs::create_dir_all(path).unwrap();
-        let log_path = path.join("000001.log"); // TODO number is variable
-        Self {
-            directory,
-            log_file: File::create(log_path).unwrap(),
-        }
-    }
-}
-
-impl Write for RevelDB {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.log_file.write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.log_file.flush()
-    }
+pub fn newFileLog(directory: String) -> File {
+    let path = Path::new(&directory);
+    fs::create_dir_all(path).unwrap();
+    let log_path = path.join("000001.log"); // TODO number is variable
+    File::create(log_path).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::put;
+
     use super::*;
 
     #[test]
@@ -87,5 +78,12 @@ mod tests {
         let r = Record::new(&[1, 4, 9, 16], RecordType::FULL);
         let encoded = r.encode();
         assert_eq!(encoded.len(), 11)
+    }
+
+    #[test]
+    fn test_put() {
+        let mut v: Vec<u8> = Vec::new();
+        put(&[1, 2, 3], &[9, 10], &mut v);
+        assert_eq!(&[3, 1, 2, 3, 2, 9, 10], v.as_slice());
     }
 }
