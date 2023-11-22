@@ -45,6 +45,7 @@ impl Record {
     }
 
     pub fn encode_to_file(&self, f: &mut impl Write) {
+        // TODO mask checksum
         f.write(&self.checksum.to_le_bytes());
         f.write(&self.length.to_le_bytes());
         f.write(&[self.record_type as u8]);
@@ -53,7 +54,7 @@ impl Record {
 }
 
 fn put(key: &[u8], value: &[u8], f: &mut impl Write) {
-    // TODO imlement varint for thi to work with sizes > 127
+    // TODO implement varint for this to work with sizes > 127
     f.write(&[key.len() as u8]);
     f.write(key);
     f.write(&[value.len() as u8]);

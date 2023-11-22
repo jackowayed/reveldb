@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
-    let path = Path::new("./dbs/basic3");
+    let path = Path::new("./dbs/basic4");
     fs::create_dir_all(path).unwrap();
     let mut options = Options::new();
     options.create_if_missing = true;
