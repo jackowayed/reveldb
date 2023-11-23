@@ -24,6 +24,7 @@ pub struct Record {
 }
 
 const LOG_BLOCK_SIZE: usize = 32 * 1024;
+const LOG_RECORD_HEADER_SIZE: usize = 7;
 pub struct LogFile {
     f: File,
 }
@@ -35,16 +36,19 @@ impl LogFile {
 
     /// Subtract the header size
     fn logical_block_capacity(&mut self) -> usize {
-        self.block_capacity() - 7
+        self.block_capacity() - LOG_RECORD_HEADER_SIZE
+    }
+
+    fn offset(&mut self) -> usize {
+        self.f.stream_position().unwrap() as usize
     }
 
     fn block_cursor(&mut self) -> usize {
-        let offset = self.f.stream_position().unwrap();
-        offset as usize % LOG_BLOCK_SIZE
+        self.offset() as usize % LOG_BLOCK_SIZE
     }
 
     fn start_new_block(&mut self) {
-        assert!(self.block_capacity() < 7);
+        assert!(self.block_capacity() < LOG_RECORD_HEADER_SIZE);
         while self.block_cursor() % LOG_BLOCK_SIZE != 0 {
             // TODO could avoid looping by hardcoding a 7-byte slice and then doing math to slice into it
             self.f.write(&[0]).unwrap();
@@ -59,7 +63,7 @@ impl LogFile {
 
 impl Write for LogFile {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if self.block_capacity() < 7 {
+        if self.block_capacity() < LOG_RECORD_HEADER_SIZE {
             self.start_new_block();
         }
         let mut offset = 0;
@@ -136,6 +140,8 @@ pub fn new_file_log(directory: String) -> File {
 
 #[cfg(test)]
 mod tests {
+    use tempdir::TempDir;
+
     use crate::put;
 
     use super::*;
@@ -152,5 +158,39 @@ mod tests {
         let mut v: Vec<u8> = Vec::new();
         put(&[1, 2, 3], &[9, 10], &mut v);
         assert_eq!(&[3, 1, 2, 3, 2, 9, 10], v.as_slice());
+    }
+
+    #[test]
+    fn log_writer_record_chunking() {
+        let tmp_dir = TempDir::new("testing").unwrap();
+        let mut lf = LogFile {
+            f: File::create(tmp_dir.path().join("log")).unwrap(),
+        };
+        let buf = [0u8; 3 * LOG_BLOCK_SIZE];
+
+        let mut logical_written = 10;
+        lf.write(&buf[..10]).unwrap();
+        assert_eq!(logical_written + LOG_RECORD_HEADER_SIZE, lf.offset());
+
+        logical_written += LOG_BLOCK_SIZE;
+        lf.write(&buf[..LOG_BLOCK_SIZE]).unwrap();
+        assert_eq!(
+            logical_written + 3 * LOG_RECORD_HEADER_SIZE,
+            lf.offset(),
+            "This write will be broken into two records"
+        );
+
+        let almost_finish_block = lf.logical_block_capacity() - 5;
+        logical_written += almost_finish_block;
+        lf.write(&buf[..almost_finish_block]).unwrap();
+        assert_eq!(logical_written + LOG_RECORD_HEADER_SIZE * 4, lf.offset());
+
+        lf.write(&buf[..1]).unwrap();
+        logical_written += 1;
+        assert_eq!(
+            logical_written + LOG_RECORD_HEADER_SIZE * 5 + 5,
+            lf.offset(),
+            "rest of block needs to be padded"
+        );
     }
 }
