@@ -1,10 +1,12 @@
 use std::{
     fs::{self, File},
-    io::{Seek, Write},
+    io::Write,
     path::Path,
 };
 
-use crc::{Crc, CRC_32_ISCSI};
+//mod db;
+mod log_file;
+
 use integer_encoding::VarInt;
 
 fn put(key: &[u8], value: &[u8], f: &mut impl Write) {

@@ -1,3 +1,10 @@
+use std::{
+    fs::File,
+    io::{Seek, Write},
+};
+
+use crc::{Crc, CRC_32_ISCSI};
+
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum RecordType {
