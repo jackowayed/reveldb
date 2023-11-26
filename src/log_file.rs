@@ -14,15 +14,15 @@ pub enum RecordType {
     LAST = 4,
 }
 #[derive(Debug)]
-pub struct Record {
+struct Record<'a> {
     checksum: u32,           // crc32c of type and data[] ; little-endian
     length: u16,             // little-endian
     record_type: RecordType, // One of FULL, FIRST, MIDDLE, LAST
-    data: Box<[u8]>,
+    data: &'a [u8],
 }
 
-impl Record {
-    pub fn new(data: &[u8], record_type: RecordType) -> Self {
+impl<'a> Record<'a> {
+    pub fn new(data: &'a [u8], record_type: RecordType) -> Self {
         let length = data.len() as u16;
         let crc = Crc::<u32>::new(&CRC_32_ISCSI);
         let mut digest = crc.digest();
@@ -32,7 +32,7 @@ impl Record {
             checksum: digest.finalize(),
             length,
             record_type,
-            data: Box::from(data),
+            data: data,
         }
     }
 
