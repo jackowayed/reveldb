@@ -54,7 +54,7 @@ impl Record {
 }
 
 const LOG_BLOCK_SIZE: usize = 32 * 1024;
-const LOG_RECORD_HEADER_SIZE: usize = 7;
+pub const LOG_RECORD_HEADER_SIZE: usize = 7;
 pub struct LogFile {
     f: File,
 }

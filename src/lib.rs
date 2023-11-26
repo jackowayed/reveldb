@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-//mod db;
+mod db;
 mod log_file;
 
 use integer_encoding::VarInt;
