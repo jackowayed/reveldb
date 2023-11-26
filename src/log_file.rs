@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{Seek, Write},
+    io::{ErrorKind, Read, Seek, Write},
 };
 
 use crc::{Crc, CRC_32_ISCSI};
@@ -60,6 +60,10 @@ pub struct LogFile {
 }
 
 impl LogFile {
+    pub fn new(f: File) -> Self {
+        Self { f }
+    }
+
     fn block_capacity(&mut self) -> usize {
         LOG_BLOCK_SIZE - self.block_cursor()
     }
@@ -84,10 +88,30 @@ impl LogFile {
             self.f.write(&[0]).unwrap();
         }
     }
-
-    fn write_record(&mut self, buf: &[u8], record_type: RecordType) -> std::io::Result<usize> {
-        let r = Record::new(buf, record_type);
-        r.encode_to_file(&mut self.f)
+    pub fn recover(&mut self) -> std::io::Result<()> {
+        assert_eq!(0, self.offset());
+        loop {
+            let mut record_header = [0u8; LOG_RECORD_HEADER_SIZE];
+            if let Err(e) = self.f.read_exact(&mut record_header) {
+                if e.kind() == ErrorKind::UnexpectedEof {
+                    break;
+                }
+                return Err(e);
+            }
+            // TODO need to do a lot more Record logic:
+            //    test checksum, handle multi-record payloads
+            let length = u16::from_le_bytes([record_header[4], record_header[5]]);
+            //let mut content = [0u8; length];
+            let mut content: Vec<u8> = vec![0u8; length as usize];
+            self.f.read_exact(&mut content)?;
+            // TODO varint
+            // TODO has to be a better way re int types
+            let key_length = content[0] as usize;
+            let value_offset = 1 + key_length;
+            let value_length = content[value_offset] as usize;
+            assert_eq!(length as usize, 1 + 1 + key_length + value_length);
+        }
+        Ok(())
     }
 }
 
