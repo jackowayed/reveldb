@@ -61,6 +61,7 @@ mod tests {
     use super::*;
 
     const VAL1: [u8; 8] = [1, 2, 3, 4, 5, 5, 5, 9];
+    const VAL2: [u8; 1] = [17];
 
     #[test]
     fn test_put() -> std::io::Result<()> {
@@ -69,6 +70,13 @@ mod tests {
         let key: [u8; 3] = [65, 66, 67];
         db.put(&key, &VAL1)?;
         assert_eq!(Some(VAL1.as_slice()), db.get(&key));
+        db.put(&key, &VAL2)?;
+        assert_eq!(Some(VAL2.as_slice()), db.get(&key));
+        Ok(())
+    }
+
+    #[test]
+    fn test_recovery() -> std::io::Result<()> {
         Ok(())
     }
 }

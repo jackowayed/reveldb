@@ -100,16 +100,16 @@ impl LogFile {
             }
             // TODO need to do a lot more Record logic:
             //    test checksum, handle multi-record payloads
-            let length = u16::from_le_bytes([record_header[4], record_header[5]]);
+            let length = u16::from_le_bytes([record_header[4], record_header[5]]) as usize;
             //let mut content = [0u8; length];
-            let mut content: Vec<u8> = vec![0u8; length as usize];
+            let mut content: Vec<u8> = vec![0u8; length];
             self.f.read_exact(&mut content)?;
             // TODO varint
             // TODO has to be a better way re int types
             let key_length = content[0] as usize;
             let value_offset = 1 + key_length;
             let value_length = content[value_offset] as usize;
-            assert_eq!(length as usize, 1 + 1 + key_length + value_length);
+            assert_eq!(length, 1 + 1 + key_length + value_length);
         }
         Ok(())
     }
