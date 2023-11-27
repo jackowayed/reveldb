@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, HashMap},
     fs::File,
     io::{ErrorKind, Read, Seek, Write},
 };
@@ -88,7 +89,7 @@ impl LogFile {
             self.f.write(&[0]).unwrap();
         }
     }
-    pub fn recover(&mut self) -> std::io::Result<()> {
+    pub fn recover(&mut self, memtable: &mut BTreeMap<Vec<u8>, Vec<u8>>) -> std::io::Result<()> {
         assert_eq!(0, self.offset());
         loop {
             let mut record_header = [0u8; LOG_RECORD_HEADER_SIZE];
@@ -102,14 +103,20 @@ impl LogFile {
             //    test checksum, handle multi-record payloads
             let length = u16::from_le_bytes([record_header[4], record_header[5]]) as usize;
             //let mut content = [0u8; length];
-            let mut content: Vec<u8> = vec![0u8; length];
+            let mut content = vec![0u8; length];
             self.f.read_exact(&mut content)?;
             // TODO varint
-            // TODO has to be a better way re int types
             let key_length = content[0] as usize;
+            let key_content_offset = 1;
             let value_offset = 1 + key_length;
             let value_length = content[value_offset] as usize;
+            let value_content_offset = 1 + value_offset;
             assert_eq!(length, 1 + 1 + key_length + value_length);
+            let mut key = Vec::with_capacity(key_length);
+            key.extend_from_slice(&content[key_content_offset..key_content_offset + key_length]);
+            let mut val = Vec::with_capacity(value_length);
+            val.extend_from_slice(&content[value_content_offset..]);
+            memtable.insert(key, val);
         }
         Ok(())
     }

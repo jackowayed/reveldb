@@ -1,11 +1,16 @@
-use std::{collections::HashMap, fs::OpenOptions, io::Write, path::Path};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::OpenOptions,
+    io::Write,
+    path::Path,
+};
 
 use crate::log_file::LogFile;
 
 pub struct RevelDB {
     log_file: LogFile,
     directory: Box<Path>,
-    memtable: HashMap<Vec<u8>, Vec<u8>>,
+    memtable: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 // TODO should be a pattern or use MANIFEST or something
@@ -22,10 +27,9 @@ impl RevelDB {
         let mut db = Self {
             log_file: LogFile::new(log_file),
             directory: directory.to_path_buf().into_boxed_path(),
-            memtable: HashMap::new(),
+            memtable: BTreeMap::new(),
         };
-        // RECOVERY
-        db.log_file.recover()?;
+        db.log_file.recover(&mut db.memtable)?;
         Ok(db)
     }
 
@@ -60,23 +64,37 @@ mod tests {
 
     use super::*;
 
+    const KEY1: [u8; 3] = [65, 66, 67];
+    const KEY2: [u8; 1] = [1];
+    const KEY3: [u8; 2] = [5, 6];
+
     const VAL1: [u8; 8] = [1, 2, 3, 4, 5, 5, 5, 9];
     const VAL2: [u8; 1] = [17];
+    const VAL3: [u8; 2] = [22, 22];
 
     #[test]
     fn test_put() -> std::io::Result<()> {
-        let td = TempDir::new("foobar")?;
+        let td = TempDir::new("tmp-test_put")?;
         let mut db = RevelDB::new(td.path())?;
-        let key: [u8; 3] = [65, 66, 67];
-        db.put(&key, &VAL1)?;
-        assert_eq!(Some(VAL1.as_slice()), db.get(&key));
-        db.put(&key, &VAL2)?;
-        assert_eq!(Some(VAL2.as_slice()), db.get(&key));
+        db.put(&KEY1, &VAL1)?;
+        assert_eq!(Some(VAL1.as_slice()), db.get(&KEY1));
+        db.put(&KEY1, &VAL2)?;
+        assert_eq!(Some(VAL2.as_slice()), db.get(&KEY1));
         Ok(())
     }
 
     #[test]
     fn test_recovery() -> std::io::Result<()> {
+        let td = TempDir::new("tmp-test_recovery")?;
+        {
+            let mut db = RevelDB::new(td.path())?;
+            db.put(&KEY1, &VAL1)?;
+            db.put(&KEY2, &VAL2)?;
+            db.put(&KEY1, &VAL3)?;
+        }
+        let mut db = RevelDB::new(td.path())?;
+        assert_eq!(VAL3, db.get(&KEY1).unwrap());
+        assert_eq!(VAL2, db.get(&KEY2).unwrap());
         Ok(())
     }
 }
