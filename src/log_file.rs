@@ -93,6 +93,7 @@ impl LogFile {
         assert_eq!(0, self.offset());
         loop {
             let mut record_header = [0u8; LOG_RECORD_HEADER_SIZE];
+            // TODO use read instead of read_exact
             if let Err(e) = self.f.read_exact(&mut record_header) {
                 if e.kind() == ErrorKind::UnexpectedEof {
                     break;
