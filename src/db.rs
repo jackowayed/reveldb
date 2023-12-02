@@ -1,9 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::OpenOptions,
-    io::Write,
-    path::Path,
-};
+use std::{collections::BTreeMap, fs::OpenOptions, io::Write, path::Path};
 
 use crate::log_file::LogFile;
 

@@ -1,6 +1,5 @@
 use std::{
     fs::{self, File},
-    io::Write,
     path::Path,
 };
 
@@ -8,14 +7,6 @@ mod db;
 mod log_file;
 
 use integer_encoding::VarInt;
-
-fn put(key: &[u8], value: &[u8], f: &mut impl Write) {
-    // TODO implement varint for this to work with sizes > 127
-    f.write(&[key.len() as u8]).unwrap();
-    f.write(key).unwrap();
-    f.write(&[value.len() as u8]).unwrap();
-    f.write(value).unwrap();
-}
 
 pub fn new_file_log(directory: String) -> File {
     let path = Path::new(&directory);
