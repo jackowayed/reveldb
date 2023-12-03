@@ -5,6 +5,7 @@ use std::{
 
 mod db;
 mod log_file;
+mod sstable;
 mod varint;
 
 pub fn new_file_log(directory: String) -> File {
